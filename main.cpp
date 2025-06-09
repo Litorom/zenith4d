@@ -9,21 +9,36 @@ using namespace fdm;
 initDLL
 
 
-std::vector<Item*> getItems()
-{
-	std::vector<Item*> items;
-	items.push_back(new ItemBlock());
-	items.push_back(new ItemTool());
-	// Add more items as needed  
-	return items;
+InventorySession CreativeInventory; 
+InventorySession inventoryInstance;
+InventoryGrid inventoryGrid;
+Player player;
+
+// Initializes the creative inventory with all items
+void initCreativeInventory() {
+	inventoryGrid = InventoryGrid(glm::ivec2{ (Item::blueprints.size() / 8 ) + 1, 8});
+	CreativeInventory.inventory = &inventoryGrid;
+	for (auto& j : Item::blueprints.items()) {
+		auto newItem = Item::create(j.key(), 4096);
+
+		CreativeInventory.inventory->addItem(newItem);
+	}
+	return;
 }
 
+void replenishCreativeInventory() {
+	// TODO
+}
 
-$hook(void, StateGame, init, StateManager& s)
+$hook(void,StateGame, init, StateManager& s)
 {
-	// Your code that runs at first frame here (it calls when you load into the world)
-
 	original(self, s);
+
+	static bool loaded = false;
+	if (loaded) return;
+	loaded = true;
+
+	initCreativeInventory();
 }
 
 $hook(void, Player, update, World* world, double dt, EntityPlayer* entityPlayer)
@@ -36,38 +51,24 @@ $hook(void, Player, update, World* world, double dt, EntityPlayer* entityPlayer)
 $hook(bool, Player, keyInput, GLFWwindow* window, World* world, int key, int scancode, int action, int mods)
 {
 	// Your code that runs when Key Input happens (check GLFW Keyboard Input tutorials)|(it only calls when you play in world, because it is a Player function)
-	InventorySession inventoryInstance;
-	Player player;
+	
 
-	auto items = getItems(); // Call once and keep the vector
+	if (key == GLFW_KEY_C && action == GLFW_PRESS) {
 
-	for (auto* rawItem : items) {
-		inventoryInstance.inventory = new InventoryGrid(); // Create a new inventory grid for the player
-		std::unique_ptr<Item> item(rawItem); // Take ownership
-		inventoryInstance.inventory->addItem(item); // Move into inventory
-		// item is now empty, inventory owns it
-	}
-
-	int inventorySize = inventoryInstance.inventory->getSlotCount();
-	printf("Items found: %d\n", inventorySize);
-
-	if (key == GLFW_KEY_7 && action == GLFW_PRESS) {
 		// Copied from backpacks mod, code for opening inventory:
-		
-		self->inventoryManager.primary = &self->playerInventory; // ok i was wrong its playerInventory
+		self->inventoryManager.primary = &self->playerInventory;
 		self->shouldResetMouse = true;
-		self->inventoryManager.secondary = inventoryInstance.inventory;
+		self->inventoryManager.secondary = CreativeInventory.inventory;
 
 
 		self->inventoryManager.craftingMenu.updateAvailableRecipes();
 		self->inventoryManager.updateCraftingMenuBox();
 
-		inventoryInstance.inventory = self->inventoryManager.secondary;
-		inventoryInstance.manager = &self->inventoryManager;
+		CreativeInventory.inventory = self->inventoryManager.secondary;
+		CreativeInventory.manager = &self->inventoryManager;
 
 		((InventoryGrid*)self->inventoryManager.secondary)->renderPos = glm::ivec2{ 397,50 };
 	}
-
 
 	return original(self, window, world, key, scancode, action, mods);
 }
@@ -76,7 +77,7 @@ $hook(void, StateIntro, init, StateManager& s)
 {
 	original(self, s);
 
-	// initialize opengl stuff
+	// Initialize opengl stuff
 	glewExperimental = true;
 	glewInit();
 	glfwInit();
