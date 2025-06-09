@@ -19,15 +19,11 @@ void initCreativeInventory() {
 	inventoryGrid = InventoryGrid(glm::ivec2{ (Item::blueprints.size() / 8 ) + 1, 8});
 	CreativeInventory.inventory = &inventoryGrid;
 	for (auto& j : Item::blueprints.items()) {
-		auto newItem = Item::create(j.key(), 4096);
+		auto newItem = Item::create(j.key(), 0);
 
 		CreativeInventory.inventory->addItem(newItem);
 	}
 	return;
-}
-
-void replenishCreativeInventory() {
-	// TODO
 }
 
 $hook(void,StateGame, init, StateManager& s)
@@ -46,6 +42,22 @@ $hook(void, Player, update, World* world, double dt, EntityPlayer* entityPlayer)
 	// Your code that runs every frame here (it only calls when you play in world, because its Player's function)
 
 	original(self, world, dt, entityPlayer);
+}
+
+$hook(void, InventoryManager, applyTransfer, InventoryManager::TransferAction action, std::unique_ptr<Item>& selectedSlot, std::unique_ptr<Item>& cursorSlot, Inventory* other)
+{
+	InventoryManager& actualInventoryManager = StateGame::instanceObj.player.inventoryManager;
+	if (!actualInventoryManager.isOpen() || actualInventoryManager.secondary != CreativeInventory.inventory)
+		return original(self, action, selectedSlot, cursorSlot, other);
+	// no need for else since last line has return
+	if (other != CreativeInventory.inventory) {
+		if (selectedSlot == nullptr)
+			return;
+		cursorSlot = selectedSlot->clone();
+		cursorSlot->count = cursorSlot->getStackLimit();
+	}
+	else
+		return original(self, action, selectedSlot, cursorSlot, other);
 }
 
 $hook(bool, Player, keyInput, GLFWwindow* window, World* world, int key, int scancode, int action, int mods)
