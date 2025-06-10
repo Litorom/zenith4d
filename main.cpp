@@ -1,8 +1,7 @@
 //#define DEBUG_CONSOLE // Uncomment this if you want a debug console to start. You can use the Console class to print. You can use Console::inStrings to get input.
 
 #include <4dm.h>
-#include "4DKeyBinds.h" // get this header from keybinds repository
-
+#include "4DKeyBinds.h"
 using namespace fdm;
 
 // Initialize the DLLMain
@@ -25,21 +24,23 @@ void initCreativeInventory() {
 	return;
 }
 
-void openCreativeInventory(Player* self, GLFWwindow* window, int action, int mods)
+void openCreativeInventory(GLFWwindow* window, int action, int mods)
 {
+	
+
 	// Copied from backpacks mod, code for opening inventory:
-	self->inventoryManager.primary = &self->playerInventory;
-	self->shouldResetMouse = true;
-	self->inventoryManager.secondary = CreativeInventory.inventory;
+	StateGame::instanceObj.player.inventoryManager.primary = &StateGame::instanceObj.player.playerInventory;
+	StateGame::instanceObj.player.shouldResetMouse = true;
+	StateGame::instanceObj.player.inventoryManager.secondary = CreativeInventory.inventory;
 
 
-	self->inventoryManager.craftingMenu.updateAvailableRecipes();
-	self->inventoryManager.updateCraftingMenuBox();
+	StateGame::instanceObj.player.inventoryManager.craftingMenu.updateAvailableRecipes();
+	StateGame::instanceObj.player.inventoryManager.updateCraftingMenuBox();
 
-	CreativeInventory.inventory = self->inventoryManager.secondary;
-	CreativeInventory.manager = &self->inventoryManager;
+	CreativeInventory.inventory = StateGame::instanceObj.player.inventoryManager.secondary;
+	CreativeInventory.manager = &StateGame::instanceObj.player.inventoryManager;
 
-	((InventoryGrid*)self->inventoryManager.secondary)->renderPos = glm::ivec2{ 397,50 };
+	((InventoryGrid*)StateGame::instanceObj.player.inventoryManager.secondary)->renderPos = glm::ivec2{ 397,50 };
 }
 
 $hook(void,StateGame, init, StateManager& s)
@@ -61,7 +62,7 @@ $hook(bool, InventoryManager, applyTransfer, InventoryManager::TransferAction ac
 	// no need for else since last line has return
 	if (other != CreativeInventory.inventory) {
 		if (selectedSlot == nullptr)
-			return;
+			return false;
 		cursorSlot = selectedSlot->clone();
 		cursorSlot->count = cursorSlot->getStackLimit();
 	}
@@ -74,13 +75,13 @@ $hook(bool, Player, keyInput, GLFWwindow* window, World* world, int key, int sca
 	if (!KeyBinds::isLoaded())
 	{
 		if (key == GLFW_KEY_C && action == GLFW_PRESS)
-			openCreativeInventory(self, window, action, mods);
+			openCreativeInventory(window, action, mods);
 	}
 	return original(self, window, world, key, scancode, action, mods);
 }
 $exec
 {
-	KeyBinds::addBind("YourModName", "YourKeybindName", glfw::Keys::C, KeyBindsScope::PLAYER, openCreativeInventory);
+	KeyBinds::addBind("Zenith's Creative Inventory", "Open Creative Inventory", glfw::Keys::C, KeyBindsScope::PLAYER, openCreativeInventory);
 }
 
 $hook(void, StateIntro, init, StateManager& s)
