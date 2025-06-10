@@ -27,6 +27,7 @@ void initCreativeInventory() {
 void openCreativeInventory(GLFWwindow* window, int action, int mods)
 {
 	if (action != GLFW_PRESS) return;
+	if (StateGame::instanceObj.world->getType() != World::TYPE_SINGLEPLAYER) return;
 
 	Player& player = StateGame::instanceObj.player;
 
@@ -54,8 +55,15 @@ $hook(bool, InventoryManager, applyTransfer, InventoryManager::TransferAction ac
 	if (other != CreativeInventory.inventory) {
 		if (selectedSlot == nullptr)
 			return false;
-		cursorSlot = selectedSlot->clone();
-		cursorSlot->count = cursorSlot->getStackLimit();
+		if (cursorSlot != nullptr) {
+			cursorSlot = nullptr;
+			return true;
+		}
+		else {
+			cursorSlot = selectedSlot->clone();
+			cursorSlot->count = cursorSlot->getStackLimit();
+			return true;
+		}
 	}
 	else
 		return original(self, action, selectedSlot, cursorSlot, other);
@@ -65,14 +73,14 @@ $hook(bool, Player, keyInput, GLFWwindow* window, World* world, int key, int sca
 {
 	if (!KeyBinds::isLoaded())
 	{
-		if (key == GLFW_KEY_C && action == GLFW_PRESS)
+		if (key == GLFW_KEY_I)
 			openCreativeInventory(window, action, mods);
 	}
 	return original(self, window, world, key, scancode, action, mods);
 }
 $exec
 {
-	KeyBinds::addBind("Zenith's Creative Inventory", "Open Creative Inventory", glfw::Keys::C, KeyBindsScope::PLAYER, openCreativeInventory);
+	KeyBinds::addBind("Zenith's Creative", "Open Creative Inventory", glfw::Keys::C, KeyBindsScope::PLAYER, openCreativeInventory);
 }
 
 $hook(void, StateGame, init, StateManager& s)
