@@ -1,7 +1,7 @@
 //#define DEBUG_CONSOLE // Uncomment this if you want a debug console to start. You can use the Console class to print. You can use Console::inStrings to get input.
 
 #include <4dm.h>
-#include <stdio.h>
+#include "4DKeyBinds.h" // get this header from keybinds repository
 
 using namespace fdm;
 
@@ -9,14 +9,13 @@ using namespace fdm;
 initDLL
 
 
-InventorySession CreativeInventory; 
-InventorySession inventoryInstance;
+InventorySession CreativeInventory;
 InventoryGrid inventoryGrid;
-Player player;
+
 
 // Initializes the creative inventory with all items
 void initCreativeInventory() {
-	inventoryGrid = InventoryGrid(glm::ivec2{ (Item::blueprints.size() / 8 ) + 1, 8});
+	inventoryGrid = InventoryGrid(glm::ivec2{ ((Item::blueprints.size() + 7) / 8), 8});
 	CreativeInventory.inventory = &inventoryGrid;
 	for (auto& j : Item::blueprints.items()) {
 		auto newItem = Item::create(j.key(), 0);
@@ -24,6 +23,23 @@ void initCreativeInventory() {
 		CreativeInventory.inventory->addItem(newItem);
 	}
 	return;
+}
+
+void openCreativeInventory(Player* self, GLFWwindow* window, int action, int mods)
+{
+	// Copied from backpacks mod, code for opening inventory:
+	self->inventoryManager.primary = &self->playerInventory;
+	self->shouldResetMouse = true;
+	self->inventoryManager.secondary = CreativeInventory.inventory;
+
+
+	self->inventoryManager.craftingMenu.updateAvailableRecipes();
+	self->inventoryManager.updateCraftingMenuBox();
+
+	CreativeInventory.inventory = self->inventoryManager.secondary;
+	CreativeInventory.manager = &self->inventoryManager;
+
+	((InventoryGrid*)self->inventoryManager.secondary)->renderPos = glm::ivec2{ 397,50 };
 }
 
 $hook(void,StateGame, init, StateManager& s)
@@ -37,14 +53,7 @@ $hook(void,StateGame, init, StateManager& s)
 	initCreativeInventory();
 }
 
-$hook(void, Player, update, World* world, double dt, EntityPlayer* entityPlayer)
-{
-	// Your code that runs every frame here (it only calls when you play in world, because its Player's function)
-
-	original(self, world, dt, entityPlayer);
-}
-
-$hook(void, InventoryManager, applyTransfer, InventoryManager::TransferAction action, std::unique_ptr<Item>& selectedSlot, std::unique_ptr<Item>& cursorSlot, Inventory* other)
+$hook(bool, InventoryManager, applyTransfer, InventoryManager::TransferAction action, std::unique_ptr<Item>& selectedSlot, std::unique_ptr<Item>& cursorSlot, Inventory* other)
 {
 	InventoryManager& actualInventoryManager = StateGame::instanceObj.player.inventoryManager;
 	if (!actualInventoryManager.isOpen() || actualInventoryManager.secondary != CreativeInventory.inventory)
@@ -62,27 +71,16 @@ $hook(void, InventoryManager, applyTransfer, InventoryManager::TransferAction ac
 
 $hook(bool, Player, keyInput, GLFWwindow* window, World* world, int key, int scancode, int action, int mods)
 {
-	// Your code that runs when Key Input happens (check GLFW Keyboard Input tutorials)|(it only calls when you play in world, because it is a Player function)
-	
-
-	if (key == GLFW_KEY_C && action == GLFW_PRESS) {
-
-		// Copied from backpacks mod, code for opening inventory:
-		self->inventoryManager.primary = &self->playerInventory;
-		self->shouldResetMouse = true;
-		self->inventoryManager.secondary = CreativeInventory.inventory;
-
-
-		self->inventoryManager.craftingMenu.updateAvailableRecipes();
-		self->inventoryManager.updateCraftingMenuBox();
-
-		CreativeInventory.inventory = self->inventoryManager.secondary;
-		CreativeInventory.manager = &self->inventoryManager;
-
-		((InventoryGrid*)self->inventoryManager.secondary)->renderPos = glm::ivec2{ 397,50 };
+	if (!KeyBinds::isLoaded())
+	{
+		if (key == GLFW_KEY_C && action == GLFW_PRESS)
+			openCreativeInventory(self, window, action, mods);
 	}
-
 	return original(self, window, world, key, scancode, action, mods);
+}
+$exec
+{
+	KeyBinds::addBind("YourModName", "YourKeybindName", glfw::Keys::C, KeyBindsScope::PLAYER, openCreativeInventory);
 }
 
 $hook(void, StateIntro, init, StateManager& s)
@@ -94,4 +92,3 @@ $hook(void, StateIntro, init, StateManager& s)
 	glewInit();
 	glfwInit();
 }
-
