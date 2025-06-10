@@ -26,32 +26,23 @@ void initCreativeInventory() {
 
 void openCreativeInventory(GLFWwindow* window, int action, int mods)
 {
-	
+	if (action != GLFW_PRESS) return;
+
+	Player& player = StateGame::instanceObj.player;
 
 	// Copied from backpacks mod, code for opening inventory:
-	StateGame::instanceObj.player.inventoryManager.primary = &StateGame::instanceObj.player.playerInventory;
-	StateGame::instanceObj.player.shouldResetMouse = true;
-	StateGame::instanceObj.player.inventoryManager.secondary = CreativeInventory.inventory;
+	player.inventoryManager.primary = &player.playerInventory;
+	player.shouldResetMouse = true;
+	player.inventoryManager.secondary = CreativeInventory.inventory;
 
 
-	StateGame::instanceObj.player.inventoryManager.craftingMenu.updateAvailableRecipes();
-	StateGame::instanceObj.player.inventoryManager.updateCraftingMenuBox();
+	player.inventoryManager.craftingMenu.updateAvailableRecipes();
+	player.inventoryManager.updateCraftingMenuBox();
 
-	CreativeInventory.inventory = StateGame::instanceObj.player.inventoryManager.secondary;
-	CreativeInventory.manager = &StateGame::instanceObj.player.inventoryManager;
+	CreativeInventory.inventory = player.inventoryManager.secondary;
+	CreativeInventory.manager = &player.inventoryManager;
 
-	((InventoryGrid*)StateGame::instanceObj.player.inventoryManager.secondary)->renderPos = glm::ivec2{ 397,50 };
-}
-
-$hook(void,StateGame, init, StateManager& s)
-{
-	original(self, s);
-
-	static bool loaded = false;
-	if (loaded) return;
-	loaded = true;
-
-	initCreativeInventory();
+	((InventoryGrid*)player.inventoryManager.secondary)->renderPos = glm::ivec2{ 397,50 };
 }
 
 $hook(bool, InventoryManager, applyTransfer, InventoryManager::TransferAction action, std::unique_ptr<Item>& selectedSlot, std::unique_ptr<Item>& cursorSlot, Inventory* other)
@@ -82,6 +73,17 @@ $hook(bool, Player, keyInput, GLFWwindow* window, World* world, int key, int sca
 $exec
 {
 	KeyBinds::addBind("Zenith's Creative Inventory", "Open Creative Inventory", glfw::Keys::C, KeyBindsScope::PLAYER, openCreativeInventory);
+}
+
+$hook(void, StateGame, init, StateManager& s)
+{
+	original(self, s);
+
+	static bool loaded = false;
+	if (loaded) return;
+	loaded = true;
+
+	initCreativeInventory();
 }
 
 $hook(void, StateIntro, init, StateManager& s)
